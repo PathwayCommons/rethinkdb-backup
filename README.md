@@ -1,4 +1,4 @@
-# factoid-docker-config
+# rethinkdb-backup
 
 ## Introduction
 
