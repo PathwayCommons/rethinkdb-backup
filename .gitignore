@@ -1,0 +1,11 @@
+node_modules
+.DS_Store
+npm-debug.log
+/build
+.vagrant
+*.log
+/.idea/
+*.iml
+/download/*
+!/download/README
+*.tar.gz
