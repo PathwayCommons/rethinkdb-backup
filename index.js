@@ -1,6 +1,5 @@
 import express from 'express';
 import path from 'path';
-import fs from 'fs';
 import serveIndex from 'serve-index';
 import { exec } from 'child_process';
 import { format } from 'date-fns';
