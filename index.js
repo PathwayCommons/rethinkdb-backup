@@ -64,7 +64,7 @@ app.get(`/:fileName`, ( req, res, next ) => {
 });
 
 new Promise(
-  resolve => fs.mkdir( `./${DUMP_DIRECTORY}`, resolve)
+  resolve => resolve()
 )
 .then( () => {
   app.listen( PORT, () => {
