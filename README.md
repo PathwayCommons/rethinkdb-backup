@@ -48,13 +48,13 @@ General:
 - `BASE_URL` : used for logging currently
 - `PORT` : the port on which the server runs (default `3000`)
 - `LOG_LEVEL` : minimum log level; one of `info` (default), `warn`, `error`
+- `DUMP_DIRECTORY` : name of the directory where zipped archives are placed (`archives`)
 
 Database:
 
 - `DB_HOST` : hostname or ip address of the database host (default `localhost`)
 - `DB_PORT` : port for the database host (default: `28015`)
 - `DB_NAME` : name of the db (default factoid)
-- `DUMP_DIRECTORY` : name of the directory where zipped archives are placed (default `archives`)
 - `DUMP_DATE_FORMAT` : format for the date stamp used in naming the zipped archive - i.e. `${DB_NAME}_dump_<date stamp>.tar.gz` (default `yyyy-MM-dd_HH-mm-ss-SSS`)
 
 ## Docker
