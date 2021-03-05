@@ -50,7 +50,7 @@ app.get(`/${DUMP_PATH}dump`, checkApiKey, ( req, res, next ) => {
     }
 
     logger.info(`stdout:\n${stdout}`);
-    res.location(`/${FILENAME}`);
+    res.location(`/${DUMP_PATH}${FILENAME}`);
     return res.status(201).end();
   });
 
