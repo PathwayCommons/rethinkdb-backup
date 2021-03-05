@@ -3,6 +3,7 @@ import path from 'path';
 import serveIndex from 'serve-index';
 import { exec } from 'child_process';
 import { format } from 'date-fns';
+import favicon from 'serve-favicon';
 
 import logger from './logger';
 import {
@@ -12,15 +13,26 @@ import {
   DB_PORT,
   DB_NAME,
   DUMP_DIRECTORY,
-  DUMP_DATE_FORMAT
+  DUMP_DATE_FORMAT,
+  DUMP_PATH,
+  API_KEY
 } from './config';
 
 const app = express();
 
-// Allow: GET, HEAD, POST
-app.use(`/`,  serveIndex( path.join( __dirname, DUMP_DIRECTORY ), { 'icons': true } ) );
+const checkApiKey = function (req, res, next) {
+  if( API_KEY && req.query.apiKey != API_KEY ){
+    res.send( 401, "Unauthorized" );
+  } else {
+    next();
+  }
+};
 
-app.get('/dump', ( req, res, next ) => {
+app.use(favicon(path.join(__dirname, 'logo.png')));
+
+app.use(`/${DUMP_PATH}`,  serveIndex( path.join( __dirname, DUMP_DIRECTORY ), { 'icons': true } ) );
+
+app.get(`/${DUMP_PATH}dump`, checkApiKey, ( req, res, next ) => {
   const DATETIME = format(new Date(), DUMP_DATE_FORMAT);
   const FILENAME = `${DB_NAME}_dump_${DATETIME}.tar.gz`;
   const DUMP_FOLDER = path.join( __dirname, DUMP_DIRECTORY );
@@ -41,9 +53,10 @@ app.get('/dump', ( req, res, next ) => {
     res.location(`/${FILENAME}`);
     return res.status(201).end();
   });
+
 });
 
-app.get(`/:fileName`, ( req, res, next ) => {
+app.get(`/${DUMP_PATH}:fileName`, ( req, res, next ) => {
   const { fileName } = req.params;
   var options = {
     root: path.join( __dirname, DUMP_DIRECTORY ),
