@@ -1,4 +1,4 @@
-import _, { filter } from 'lodash';
+import _ from 'lodash';
 import express from 'express';
 import path from 'path';
 import serveIndex from 'serve-index';
