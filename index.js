@@ -1,4 +1,4 @@
-import _ from 'lodash';
+import _, { filter } from 'lodash';
 import express from 'express';
 import path from 'path';
 import serveIndex from 'serve-index';
@@ -79,9 +79,17 @@ app.get(`/${DUMP_PATH}:fileName`, ( req, res, next ) => {
 
 const onDocChange = ( err, row ) => {
   if (err) throw err;
+
+  let old_status = _.get( row, ['old_val', 'status'] );
+  let new_status = _.get( row, ['new_val', 'status'] );
+  let changeStatus = old_status !== new_status;
+
   console.log( row.type );
-  console.log( _.get( row, ['old_val', 'status'] ) );
-  console.log( _.get( row, ['new_val', 'status'] ) );
+  console.log( `old_status: ${old_status}` );
+  console.log( `new_status: ${new_status}` );
+  console.log( `changeStatus: ${changeStatus}` );
+
+  return;
 };
 
 const addDocListener = () => {
@@ -94,17 +102,20 @@ const addDocListener = () => {
       .changes({
         includeTypes: true
       })
+      .filter(
+        r.row('new_val')('status').ne(r.row('old_val')('status')) // status change
+      )
       .run( conn )
   )
   .then( cursor => cursor.each( onDocChange ) );
 };
 
-const addDbListeners = cb => {
-  return addDocListener()
-  .then( cb );
-};
+const addDbListeners = () => addDocListener();
 
-new Promise( addDbListeners )
+new Promise( resolve => {
+  addDbListeners();
+  return resolve();
+})
 .then( () => {
   app.listen( PORT, () => {
     logger.info(`Listening at ${BASE_URL}:${PORT}`);
