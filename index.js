@@ -1,3 +1,4 @@
+import _ from 'lodash';
 import express from 'express';
 import path from 'path';
 import serveIndex from 'serve-index';
@@ -76,33 +77,38 @@ app.get(`/${DUMP_PATH}:fileName`, ( req, res, next ) => {
   });
 });
 
-const onChange = result => console.log( result );
+const onDocChange = ( err, row ) => {
+  if (err) throw err;
+  console.log( row.type );
+  console.log( _.get( row, ['old_val', 'status'] ) );
+  console.log( _.get( row, ['new_val', 'status'] ) );
+};
 
-const listenDBChanges = cb => {
-  r.connect({
+const addDocListener = () => {
+  return r.connect({
     host: DB_HOST, port: DB_PORT
   })
   .then( conn =>
-    r.db('factoid')
+    r.db( DB_NAME )
       .table('document')
       .changes({
         includeTypes: true
       })
       .run( conn )
   )
-  .then( cursor => {
-    cursor.each( console.log );
-  })
+  .then( cursor => cursor.each( onDocChange ) );
+};
+
+const addDbListeners = cb => {
+  return addDocListener()
   .then( cb );
 };
 
-new Promise( listenDBChanges )
+new Promise( addDbListeners )
 .then( () => {
   app.listen( PORT, () => {
     logger.info(`Listening at ${BASE_URL}:${PORT}`);
   });
 });
-
-
 
 export default app;
