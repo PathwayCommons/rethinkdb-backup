@@ -4,6 +4,7 @@ import serveIndex from 'serve-index';
 import { exec } from 'child_process';
 import { format } from 'date-fns';
 import favicon from 'serve-favicon';
+import r from 'rethinkdb';
 
 import logger from './logger';
 import {
@@ -76,13 +77,24 @@ app.get(`/${DUMP_PATH}:fileName`, ( req, res, next ) => {
 });
 
 new Promise(
-  resolve => resolve()
+  resolve => {
+    r.connect( { host: 'localhost', port: 28015 } )
+    .then( conn => r.db('factoid').table('document').changes({
+        includeTypes: true
+      }).run( conn )
+    )
+    .then( cursor => {
+      cursor.each( console.log );
+    })
+    .then( resolve );
+  }
 )
 .then( () => {
   app.listen( PORT, () => {
     logger.info(`Listening at ${BASE_URL}:${PORT}`);
   });
 });
+
 
 
 export default app;
