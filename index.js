@@ -82,44 +82,33 @@ const onDocChange = ( err, row ) => {
 
   let old_status = _.get( row, ['old_val', 'status'] );
   let new_status = _.get( row, ['new_val', 'status'] );
-  let changeStatus = old_status !== new_status;
+  let changeStatus = old_status !== new_status && new_status === 'public';
 
-  console.log( row.type );
   console.log( `old_status: ${old_status}` );
   console.log( `new_status: ${new_status}` );
   console.log( `changeStatus: ${changeStatus}` );
-
-  return;
 };
 
-const addDocListener = () => {
-  return r.connect({
-    host: DB_HOST, port: DB_PORT
-  })
-  .then( conn =>
-    r.db( DB_NAME )
+const statusUpdate = r.row('new_val')('status').ne(r.row('old_val')('status'));
+
+const addDocListener = async () => {
+  const conn = await r.connect({ host: DB_HOST, port: DB_PORT });
+  const cursor = await r.db( DB_NAME )
       .table('document')
-      .changes({
-        includeTypes: true
-      })
-      .filter(
-        r.row('new_val')('status').ne(r.row('old_val')('status')) // status change
-      )
-      .run( conn )
-  )
-  .then( cursor => cursor.each( onDocChange ) );
+      .changes()
+      .filter( statusUpdate )
+      .run( conn );
+  cursor.each( onDocChange );
 };
 
 const addDbListeners = () => addDocListener();
 
-new Promise( resolve => {
-  addDbListeners();
-  return resolve();
-})
-.then( () => {
-  app.listen( PORT, () => {
-    logger.info(`Listening at ${BASE_URL}:${PORT}`);
+Promise.resolve()
+  .then( addDbListeners )
+  .then( () => {
+    app.listen( PORT, () => {
+      logger.info(`Listening at ${BASE_URL}:${PORT}`);
+    });
   });
-});
 
 export default app;
