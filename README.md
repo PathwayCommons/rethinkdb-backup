@@ -59,7 +59,7 @@ Database:
 
 ## Docker
 
-Images are maintained on [Docker Hub](https://hub.docker.com/). A `Dockerfile` and sample `docker-compose.yml` file are provided.
+Images are maintained on [Docker Hub](https://hub.docker.com/).
 
 ## Publishing a release
 

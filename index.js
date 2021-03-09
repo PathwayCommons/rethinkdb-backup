@@ -76,19 +76,27 @@ app.get(`/${DUMP_PATH}:fileName`, ( req, res, next ) => {
   });
 });
 
-new Promise(
-  resolve => {
-    r.connect( { host: 'localhost', port: 28015 } )
-    .then( conn => r.db('factoid').table('document').changes({
+const onChange = result => console.log( result );
+
+const listenDBChanges = cb => {
+  r.connect({
+    host: DB_HOST, port: DB_PORT
+  })
+  .then( conn =>
+    r.db('factoid')
+      .table('document')
+      .changes({
         includeTypes: true
-      }).run( conn )
-    )
-    .then( cursor => {
-      cursor.each( console.log );
-    })
-    .then( resolve );
-  }
-)
+      })
+      .run( conn )
+  )
+  .then( cursor => {
+    cursor.each( console.log );
+  })
+  .then( cb );
+};
+
+new Promise( listenDBChanges )
 .then( () => {
   app.listen( PORT, () => {
     logger.info(`Listening at ${BASE_URL}:${PORT}`);
