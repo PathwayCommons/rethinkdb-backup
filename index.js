@@ -2,10 +2,11 @@ import _ from 'lodash';
 import express from 'express';
 import path from 'path';
 import serveIndex from 'serve-index';
-import { exec } from 'child_process';
 import { format } from 'date-fns';
 import favicon from 'serve-favicon';
 import r from 'rethinkdb';
+import util from 'util';
+import { exec as execRaw } from 'child_process';
 
 import logger from './logger';
 import {
@@ -20,63 +21,27 @@ import {
   API_KEY
 } from './config';
 
-const app = express();
-
-const checkApiKey = function (req, res, next) {
-  if( API_KEY && req.query.apiKey != API_KEY ){
-    res.send( 401, "Unauthorized" );
-  } else {
-    next();
-  }
-};
-
-app.use(favicon(path.join(__dirname, 'logo.png')));
-
-app.use(`/${DUMP_PATH}`,  serveIndex( path.join( __dirname, DUMP_DIRECTORY ), { 'icons': true } ) );
-
-app.get(`/${DUMP_PATH}dump`, checkApiKey, ( req, res, next ) => {
+// RethinkDB: dump
+const exec = util.promisify( execRaw );
+const dump = async () => {
   const DATETIME = format(new Date(), DUMP_DATE_FORMAT);
   const FILENAME = `${DB_NAME}_dump_${DATETIME}.tar.gz`;
   const DUMP_FOLDER = path.join( __dirname, DUMP_DIRECTORY );
   const CMD = `cd ${DUMP_FOLDER} && rethinkdb dump --connect ${DB_HOST}:${DB_PORT} --export ${DB_NAME} --file ${FILENAME}`;
+  const location = `/${DUMP_PATH}${FILENAME}`;
 
-  exec( CMD, (error, stdout, stderr) => {
-    if ( error ) {
-      logger.error(`error: ${error.message}`);
-      return next( error );
-    }
+  try {
+    const { stdout } = await exec( CMD );
+    logger.info( `dump: ${stdout}` );
+    return location;
 
-    if ( stderr ) {
-      logger.error(`stderr: ${stderr}`);
-      return next( stderr );
-    }
+  } catch ( err ) {
+    logger.error( `dump error: ${err}` );
+    throw err;
+  }
+};
 
-    logger.info(`stdout:\n${stdout}`);
-    res.location(`/${DUMP_PATH}${FILENAME}`);
-    return res.status(201).end();
-  });
-
-});
-
-app.get(`/${DUMP_PATH}:fileName`, ( req, res, next ) => {
-  const { fileName } = req.params;
-  var options = {
-    root: path.join( __dirname, DUMP_DIRECTORY ),
-    dotfiles: 'deny',
-    headers: {
-      'x-timestamp': Date.now(),
-      'x-sent': true
-    }
-  };
-  res.sendFile( fileName, options, function ( err ) {
-    if ( err ) {
-      next( err );
-    } else {
-      logger.info('Sent:', fileName);
-    }
-  });
-});
-
+// RethinkDB: changefeed
 const onDocChange = ( err, row ) => {
   if (err) throw err;
 
@@ -103,6 +68,51 @@ const addDocListener = async () => {
 
 const addDbListeners = () => addDocListener();
 
+// ExpressJS: routes
+const app = express();
+
+const checkApiKey = function (req, res, next) {
+  if( API_KEY && req.query.apiKey != API_KEY ){
+    res.send( 401, "Unauthorized" );
+  } else {
+    next();
+  }
+};
+
+app.use(favicon(path.join(__dirname, 'logo.png')));
+
+app.use(`/${DUMP_PATH}`,  serveIndex( path.join( __dirname, DUMP_DIRECTORY ), { 'icons': true } ) );
+
+app.get(`/${DUMP_PATH}dump`, checkApiKey, ( req, res, next ) => {
+  dump()
+    .then( url => {
+      res.location( url );
+      return res.status( 201 ).end();
+    })
+    .catch( next );
+});
+
+app.get(`/${DUMP_PATH}:fileName`, ( req, res, next ) => {
+  const { fileName } = req.params;
+  var options = {
+    root: path.join( __dirname, DUMP_DIRECTORY ),
+    dotfiles: 'deny',
+    headers: {
+      'x-timestamp': Date.now(),
+      'x-sent': true
+    }
+  };
+  res.sendFile( fileName, options, function ( err ) {
+    if ( err ) {
+      next( err );
+    } else {
+      logger.info('Sent:', fileName);
+    }
+  });
+});
+
+
+// Initialize app
 Promise.resolve()
   .then( addDbListeners )
   .then( () => {
