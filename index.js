@@ -45,23 +45,31 @@ const dump = async () => {
 const onDocChange = ( err, row ) => {
   if (err) throw err;
 
+  let type = _.get( row, ['type'] );
   let old_status = _.get( row, ['old_val', 'status'] );
   let new_status = _.get( row, ['new_val', 'status'] );
-  let changeStatus = old_status !== new_status && new_status === 'public';
 
-  console.log( `old_status: ${old_status}` );
-  console.log( `new_status: ${new_status}` );
-  console.log( `changeStatus: ${changeStatus}` );
+  if( old_status !== new_status ){
+    console.log( `old_status: ${old_status}` );
+    console.log( `new_status: ${new_status}` );
+  }
+  if( type === 'add'  ){
+    console.log( `type: ${type}` );
+  }
 };
 
-const statusUpdate = r.row('new_val')('status').ne(r.row('old_val')('status'));
+const statusUpdateFilter = r.row( 'new_val' )( 'status' ).ne( r.row( 'old_val' )( 'status' ) );
+const addFilter = r.row( 'type' ).eq( 'add' );
+const docFilter = addFilter.or( statusUpdateFilter );
 
 const addDocListener = async () => {
   const conn = await r.connect({ host: DB_HOST, port: DB_PORT });
   const cursor = await r.db( DB_NAME )
-      .table('document')
-      .changes()
-      .filter( statusUpdate )
+      .table( 'document' )
+      .changes({
+        includeTypes: true
+      })
+      .filter( docFilter )
       .run( conn );
   cursor.each( onDocChange );
 };
