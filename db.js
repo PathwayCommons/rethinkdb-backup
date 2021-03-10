@@ -35,6 +35,7 @@ const dump = async () => {
   try {
     const { stdout } = await exec( CMD );
     logger.info( `dump: ${stdout}` );
+    logger.info( `Successful dump to: ${location}` );
     return location;
 
   } catch ( err ) {
@@ -46,7 +47,7 @@ const dump = async () => {
 let dumpScheduled = false;
 let dumpTime = null;
 
-const requestDump = async delay => {
+const requestDump = async ( delay = 0 ) => {
   let now = new Date();
   logger.info( `A dump request has been received` );
 
@@ -54,18 +55,17 @@ const requestDump = async delay => {
     logger.info( `A dump has already been scheduled for ${dumpTime} (${formatDistance( now, dumpTime )})` );
 
   } else {
+
     dumpTime = addMilliseconds( new Date(), delay );
-    logger.info( `A dump scheduled for ${dumpTime} (${formatDistance( now, dumpTime )})` );
+    logger.info( `A dump was scheduled for ${dumpTime} (${formatDistance( now, dumpTime )})` );
     dumpScheduled = true;
 
     setTimeout( async () => {
-      logger.info( `dump triggered!` );
       await dump();
       dumpTime = null;
       dumpScheduled = false;
     }, delay );
 
-    return;
   }
 };
 
@@ -88,23 +88,6 @@ const addChangesFeed = async ( table, predicate, handleItem, opts ) => {
       .run( conn );
   cursor.each( handleItem );
 };
-
-// const handleDocChanges = async ( err, item ) => {
-//   if (err) throw err;
-
-//   let type = _.get( item, ['type'] );
-//   let old_status = _.get( item, ['old_val', 'status'] );
-//   let new_status = _.get( item, ['new_val', 'status'] );
-
-//   if( old_status !== new_status ){
-//     console.log( `old_status: ${old_status}` );
-//     console.log( `new_status: ${new_status}` );
-//   }
-//   if( type === 'add'  ){
-//     console.log( `type: ${type}` );
-//   }
-//   await requestDump();
-// };
 
 const toPublicStatus = r.row( 'new_val' )( 'status' ).eq( 'public' ).and( r.row( 'old_val' )( 'status' ).ne( 'public' ) );
 const addedItem = r.row( 'type' ).eq( 'add' );
