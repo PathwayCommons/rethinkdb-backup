@@ -31,3 +31,4 @@ export const DB_HOST = env( 'DB_HOST', 'localhost' );
 export const DB_PORT = env( 'DB_PORT', 28015 );
 export const DB_NAME = env( 'DB_NAME', 'factoid' );
 export const DUMP_DATE_FORMAT = env( 'DUMP_DATE_FORMAT', 'yyyy-MM-dd_HH-mm-ss-SSS' );
+export const DUMP_DELAY_HOURS = env( 'DUMP_DELAY_HOURS', 0.05 );
