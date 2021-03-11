@@ -6,8 +6,8 @@ This app provides a capability to backup a [RethinkDB](https://rethinkdb.com/) i
 
 The system is configured to initiate a backup when changes are made to the RethinkDB `factoid` database `document` table:
 - A `document` is added
-- A `document`'s `status` field is updated to `submitted`
-- A `document` with `status:submitted` is updated (//TODO)
+- A `document`'s `status` field is updated to `public`
+- A `document` with `status = public` is updated (//TODO)
 
 Each backup request can be configured to occur with a given delay (default is 3 hours). When a backup is scheduled, further requests are ignored during this period enabling the system to aggregate or 'batch' changes.
 
