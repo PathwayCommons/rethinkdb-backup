@@ -2,16 +2,25 @@
 
 ## Introduction
 
-This app enables a client application to dump and retrieve from a running [RethinkDB](https://rethinkdb.com/) instance:
-- list zipped archives (`/`)
-- dump a database (`/dump`)
-- download an archive (`/:fileName`)
+This app provides a capability to backup a [RethinkDB](https://rethinkdb.com/) instance. Data is dumped to a compressed archive. This app can attach to a file synchronization service (e.g. [rClone](https://rclone.org/)) and initate a request to copy dumps to a remote store.
+
+The system is configured to initiate a backup when changes are made to the RethinkDB `factoid` database `document` table:
+- A `document` is added
+- A `document`'s `status` field is updated to `submitted`
+- A `document` with `status:submitted` is updated (//TODO)
+
+Each backup request can be configured to occur with a given delay (default is 3 hours). When a backup is scheduled, further requests are ignored during this period enabling the system to aggregate or 'batch' changes.
+
+A built-in webserver provides the following HTTP endpoints:
+- `/`: list the database dumps (naming convention `<DB_NAME>_dump_<DATETIME>.tar.gz`)
+- `/backup`: initiate a backup (requires `apiKey` as URL param, when configured)
+- `/<dump name>`: download a database dump
 
 ## Requirements
 
 - [NodeJS](https://nodejs.org/en/) (>=14.16.0 LTS)
 
-You must also have access to a running instance of RethinkDB.
+You must also have access to a running instance of RethinkDB and a file synchronization service like rClone.
 
 ## Getting Started
 
@@ -26,12 +35,12 @@ You must also have access to a running instance of RethinkDB.
     npm install
     ```
 
-3. Run the app (specify RethinkDB host `DB_HOST`, defaults to `localhost`)
+3. Run the app
     ```sh
-    DB_HOST="localhost" npm run start
+    npm run start
     ```
 
-4. To dump, GET [http://localhost:3000/dump](http://localhost:3000/dump)
+4. Point your browser at [http://localhost:3000/](http://localhost:3000/)
 
 ## Required software
 
@@ -48,14 +57,33 @@ General:
 - `BASE_URL` : used for logging currently
 - `PORT` : the port on which the server runs (default `3000`)
 - `LOG_LEVEL` : minimum log level; one of `info` (default), `warn`, `error`
-- `DUMP_DIRECTORY` : name of the directory where zipped archives are placed (`archives`)
+- `DUMP_DIRECTORY` : name of the directory where database dumps are placed (`archives`)
+- `DUMP_PATH` : the url path prefix to add
+- `API_KEY` : the API key for protected endpoints (i.e. `/backup`)
 
 Database:
 
+- `DB_NAME` : name of the db (default `factoid`)
 - `DB_HOST` : hostname or ip address of the database host (default `localhost`)
 - `DB_PORT` : port for the database host (default: `28015`)
-- `DB_NAME` : name of the db (default factoid)
+- `DB_USER` : the db user
+- `DB_PASS` : the db password
+- `DB_CERT` : the path to the certificate if db uses TLS
+
+Backup:
+
 - `DUMP_DATE_FORMAT` : format for the date stamp used in naming the zipped archive - i.e. `${DB_NAME}_dump_<date stamp>.tar.gz` (default `yyyy-MM-dd_HH-mm-ss-SSS`)
+- `BACKUP_DELAY_HOURS` : the hours to wait before triggering a backup (default `3`)
+
+Sync Service:
+
+- `SYNC_HOST` : Sync service host name (default `localhost`)
+- `SYNC_PORT` : Port that the sync service is bound to (default `5572`)
+- `SYNC_LOGIN` : User name for authentication.
+- `SYNC_PASSWORD` : Password for authentication.
+- `SYNC_CMD` : Sync service commmand to execute (for rClone its `sync/copy`)
+- `SYNC_SRC` : A remote name string e.g. "drive:src" for the source
+- `SYNC_DST` : A remote name string e.g. "drive:dst" for the destination
 
 ## Docker
 

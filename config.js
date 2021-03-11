@@ -23,7 +23,7 @@ export const BASE_URL = env( 'BASE_URL', 'http://localhost' );
 export const PORT = env( 'PORT', 3000 );
 export const LOG_LEVEL = env('LOG_LEVEL', 'info');
 export const DUMP_DIRECTORY = env('DUMP_DIRECTORY', 'archives');
-export const DUMP_PATH = env('DUMP_PATH', 'archives/');
+export const DUMP_PATH = env('DUMP_PATH', '');
 export const API_KEY = env('API_KEY', '');
 
 // Database
@@ -36,13 +36,13 @@ export const DB_CERT = env( 'DB_CERT', undefined );  // path to a certificate (c
 
 // Backup
 export const DUMP_DATE_FORMAT = env( 'DUMP_DATE_FORMAT', 'yyyy-MM-dd_HH-mm-ss-SSS' );
-export const BACKUP_DELAY_HOURS = env( 'BACKUP_DELAY_HOURS', 0.01 );
+export const BACKUP_DELAY_HOURS = env( 'BACKUP_DELAY_HOURS', 3 );
 
 // Sync Service
 export const SYNC_HOST = env( 'SYNC_HOST', 'localhost' );
-export const SYNC_PORT = env( 'SYNC_HOST', 5572 );
-export const SYNC_PASSWORD = env( 'SYNC_PASSWORD', undefined );
+export const SYNC_PORT = env( 'SYNC_PORT', 5572 );
 export const SYNC_LOGIN = env( 'SYNC_LOGIN', undefined );
+export const SYNC_PASSWORD = env( 'SYNC_PASSWORD', undefined );
 export const SYNC_CMD = env( 'SYNC_CMD', 'sync/copy' );
 export const SYNC_SRC = env( 'SYNC_SRC', '/data' );
 export const SYNC_DST = env( 'SYNC_DST', 'dropbox:archives' );
