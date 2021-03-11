@@ -27,9 +27,14 @@ export const DUMP_PATH = env('DUMP_PATH', 'archives/');
 export const API_KEY = env('API_KEY', '');
 
 // Database
+export const DB_NAME = env( 'DB_NAME', 'factoid' );
 export const DB_HOST = env( 'DB_HOST', 'localhost' );
 export const DB_PORT = env( 'DB_PORT', 28015 );
-export const DB_NAME = env( 'DB_NAME', 'factoid' );
+export const DB_USER = env( 'DB_USER', undefined ); // username if db uses auth
+export const DB_PASS = env( 'DB_PASS', undefined ); // password if db uses auth
+export const DB_CERT = env( 'DB_CERT', undefined );  // path to a certificate (cert) file if db uses ssl
+
+// dump
 export const DUMP_DATE_FORMAT = env( 'DUMP_DATE_FORMAT', 'yyyy-MM-dd_HH-mm-ss-SSS' );
 export const DUMP_DELAY_HOURS = env( 'DUMP_DELAY_HOURS', 0.05 );
 

@@ -12,7 +12,7 @@ import {
   DUMP_PATH,
   API_KEY
 } from './config';
-import { dump, initChangesFeeds } from  './db';
+import { dump, registerChangefeedsListeners } from  './dump';
 
 // ExpressJS: routes
 const app = express();
@@ -60,7 +60,7 @@ app.get(`/${DUMP_PATH}:fileName`, ( req, res, next ) => {
 
 // Initialize app
 Promise.resolve()
-  .then( initChangesFeeds )
+  .then( registerChangefeedsListeners )
   .then( () => {
     app.listen( PORT, () => {
       logger.info(`Listening at ${BASE_URL}:${PORT}`);

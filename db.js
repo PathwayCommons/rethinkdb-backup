@@ -1,114 +1,91 @@
-import _ from 'lodash';
-import path from 'path';
-import { format } from 'date-fns';
 import r from 'rethinkdb';
-import util from 'util';
-import { exec as execRaw } from 'child_process';
-import addMilliseconds from 'date-fns/addMilliseconds';
-import formatDistance from 'date-fns/formatDistance';
+import fs from 'fs';
+import * as config from './config';
 
-import logger from './logger';
-import {
-  DB_HOST,
-  DB_PORT,
-  DB_NAME,
-  DUMP_DIRECTORY,
-  DUMP_DATE_FORMAT,
-  DUMP_PATH,
-  DUMP_DELAY_HOURS
-} from './config';
+let db = {
+  connect: function(){
+    if( this.conn ){
+      return Promise.resolve( this.conn );
+    } else {
+      return r.connect({
+        host: config.DB_HOST,
+        port: config.DB_PORT,
+        db: config.DB_NAME,
+        user: config.DB_USER,
+        password: config.DB_PASS,
+        ssl: config.DB_CERT ? {
+          ca: fs.readFileSync( config.DB_CERT )
+        } : undefined
+      }).then( conn => {
+        this.conn = conn;
 
-const exec = util.promisify( execRaw );
+        return conn;
+      } );
+    }
+  },
 
-const MS_PER_SECOND = 1000;
-const MINUTES_PER_HOUR = 60;
-const SECONDS_PER_MINUTE = 60;
-const DUMP_DELAY_MS = DUMP_DELAY_HOURS * MINUTES_PER_HOUR * SECONDS_PER_MINUTE * MS_PER_SECOND;
+  reconnectOnClose: function( doConnect ){
+    let shouldRec = this.shouldReconnectOnClose = doConnect;
 
-// RethinkDB: dump
+    if( !this.preparedForClose ){
+      this.preparedForClose = true;
 
-/**
- * dump
- * Dump the RethinkDB database
- * The result is a zipped archive named `${DB_NAME}_dump_${DATETIME}.tar.gz` in DUMP_FOLDER
- *
- * @return location the path to the dump file
- */
-const dump = async () => {
-  const DATETIME = format(new Date(), DUMP_DATE_FORMAT);
-  const FILENAME = `${DB_NAME}_dump_${DATETIME}.tar.gz`;
-  const DUMP_FOLDER = path.join( __dirname, DUMP_DIRECTORY );
-  const CMD = `cd ${DUMP_FOLDER} && rethinkdb dump --connect ${DB_HOST}:${DB_PORT} --export ${DB_NAME} --file ${FILENAME}`;
-  const location = `/${DUMP_PATH}${FILENAME}`;
+      let reconnect = () => this.conn.reconnect({ noreplyWait: false }).run();
+      let keepTrying = () => reconnect().catch( keepTrying );
 
-  try {
-    const { stdout } = await exec( CMD );
-    logger.info( `dump: ${stdout}` );
-    logger.info( `Successful dump to: ${location}` );
-    return location;
+      this.conn.on('close', function(){
+        if( shouldRec ){
+          reconnect().catch( keepTrying );
+        }
+      });
+    }
+  },
 
-  } catch ( err ) {
-    logger.error( `dump error: ${err}` );
-    throw err;
+  getTable: function( tableName ){
+    return this.connect().then( () => {
+      return this.getDb();
+    }).then( () => {
+      return this.db.tableList().run( this.conn );
+    } ).then( tables => {
+      if( !tables.includes( tableName ) ){
+        throw new Error( `Cannot find table ${tableName}` );
+      } else {
+        return Promise.resolve();
+      }
+    } ).then( () => {
+      return this.db.table( tableName );
+    } );
+  },
+
+  getDb: function(){
+    if( this.db ){
+      return Promise.resolve( this.db );
+    }
+
+    return this.connect().then( () => {
+      return r.dbList().run( this.conn );
+    } ).then( dbs => {
+      if( !dbs.includes( config.DB_NAME ) ){
+        throw new Error( `Cannot find database ${config.DB_NAME}` );
+      } else {
+        return Promise.resolve();
+      }
+    } ).then( () => {
+      this.db = r.db( config.DB_NAME );
+      return this.db;
+    } );
+  },
+
+  accessTable: function( tableName ){
+    return this.getTable( tableName ).then( table => {
+      return {
+        rethink: r,
+        conn: this.conn,
+        db: this.db,
+        table: table
+      };
+    } );
   }
 };
 
-let dumpScheduled = false;
-let dumpTime = null;
-
-const requestDump = async ( delay = 0 ) => {
-  let now = new Date();
-  logger.info( `A dump request has been received` );
-
-  if( dumpScheduled ){
-    logger.info( `A dump has already been scheduled for ${dumpTime} (${formatDistance( now, dumpTime )})` );
-
-  } else {
-
-    dumpTime = addMilliseconds( new Date(), delay );
-    logger.info( `A dump was scheduled for ${dumpTime} (${formatDistance( now, dumpTime )})` );
-    dumpScheduled = true;
-
-    setTimeout( async () => {
-      await dump();
-      dumpTime = null;
-      dumpScheduled = false;
-    }, delay );
-
-  }
-};
-
-// RethinkDB: changefeed
-/**
- * addChangesFeed
- * Add a listener for changes to a RethinkDB table.
- * Items are filtered via 'predicate' and items can be handled individually via the 'handleItem( err, item)'
- *
- * @param {string} table Name of the database table
- * @param {object} predicate RethinkDB predicate_function
- * @param {object} handleItem Fucntion to handle an item; gets (err, item)
- * @param {object} opts changes API opts {@link https://rethinkdb.com/api/javascript/changes/}
- */
-const addChangesFeed = async ( table, predicate, handleItem, opts ) => {
-  const changesOpts = _.defaults( opts, { includeTypes: true } );
-  const conn = await r.connect({ host: DB_HOST, port: DB_PORT });
-  const cursor = await r.db( DB_NAME )
-      .table( table )
-      .changes( changesOpts )
-      .filter( predicate )
-      .run( conn );
-  cursor.each( handleItem );
-};
-
-const toPublicStatus = r.row( 'new_val' )( 'status' ).eq( 'public' ).and( r.row( 'old_val' )( 'status' ).ne( 'public' ) );
-const addedItem = r.row( 'type' ).eq( 'add' );
-const docFilter = addedItem.or( toPublicStatus );
-
-const initChangesFeeds = async () => {
-  await addChangesFeed( 'document', docFilter, () => requestDump( DUMP_DELAY_MS ) ); //add, submit
-};
-
-export {
-  initChangesFeeds,
-  dump
-};
+export default db;
