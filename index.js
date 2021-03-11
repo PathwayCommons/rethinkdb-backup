@@ -12,7 +12,7 @@ import {
   DUMP_PATH,
   API_KEY
 } from './config';
-import { dump, registerChangefeedsListeners } from  './dump';
+import { backup, registerChangefeedsListeners } from  './backup';
 
 // ExpressJS: routes
 const app = express();
@@ -30,7 +30,7 @@ app.use(favicon(path.join(__dirname, 'logo.png')));
 app.use(`/${DUMP_PATH}`,  serveIndex( path.join( __dirname, DUMP_DIRECTORY ), { 'icons': true } ) );
 
 app.get(`/${DUMP_PATH}dump`, checkApiKey, ( req, res, next ) => {
-  dump()
+  backup()
     .then( url => {
       res.location( url );
       return res.status( 201 ).end();

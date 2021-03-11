@@ -36,9 +36,12 @@ export const DB_CERT = env( 'DB_CERT', undefined );  // path to a certificate (c
 
 // dump
 export const DUMP_DATE_FORMAT = env( 'DUMP_DATE_FORMAT', 'yyyy-MM-dd_HH-mm-ss-SSS' );
-export const DUMP_DELAY_HOURS = env( 'DUMP_DELAY_HOURS', 0.05 );
+export const DUMP_DELAY_HOURS = env( 'DUMP_DELAY_HOURS', 0.01 );
 
 // Sync
 export const SYNC_HOST = env( 'SYNC_HOST', 'localhost' );
 export const SYNC_PORT = env( 'SYNC_HOST', 5572 );
+export const SYNC_MODE = env( 'SYNC_MODE', 'copy' );
+export const SYNC_SRC = env( 'SYNC_SRC', '/data' );
+export const SYNC_DST = env( 'SYNC_DST', 'dropbox:archives' );
 
