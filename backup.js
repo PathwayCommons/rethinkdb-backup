@@ -50,15 +50,15 @@ const SYNC_DEFAULT_OPTS = {
 /**
  * syncService
  * Wrapper for the rClone remote control. See {@link https://rclone.org/rc/}
- * If SYNC_HOST is unavailable or any other errors, simply swallows
  *
- * @param {*} opts options to configure the command
+ * @param {string} cmd the remote control command to run
+ * @param {object} opts options to configure the command
  * @returns if _async = true, an object with rClone "jobid" else nothing
  */
-const syncService = opts => {
-  const payload = _.defaults( opts,  SYNC_DEFAULT_OPTS );
+const syncService = ( cmd, opts ) => {
+  const payload = _.defaults( opts, SYNC_DEFAULT_OPTS );
   const body = JSON.stringify( payload );
-  let url = `http://${SYNC_HOST}:${SYNC_PORT}/${SYNC_CMD}`;
+  let url = `http://${SYNC_HOST}:${SYNC_PORT}/${cmd}`;
 
   return fetch( url, {
     method: 'POST',
@@ -76,7 +76,8 @@ const syncService = opts => {
     logger.info( JSON.stringify( json, null, 2 ) );
   })
   .catch( err => {
-    logger.error( `sync: ${err}` ); // swallow
+    logger.error( `sync: ${err}` );
+    throw err;
   });
 };
 
@@ -111,10 +112,10 @@ let resetDump = () => { dumpScheduled = false; dumpTime = null; };
 
 /**
  * scheduleDump
- * schedule a dump in delay ms. Will ignore additional requests if already scheduled
+ * Schedule a dump in 'delay' ms. Ignore additional requests while scheduled.
  *
  * @param {number} delay ms delay for dumping (default 0)
- * @param {object} next callback
+ * @param {object} next The callback to run after a dump
  */
 const scheduleDump = async ( delay = 0, next = () => {} ) => {
   let now = new Date();
@@ -131,7 +132,8 @@ const scheduleDump = async ( delay = 0, next = () => {} ) => {
     setTimeoutPromise( delay )
       .then( dump )
       .then( next )
-      .finally( resetDump );
+      .catch( () => {} ) // swallow
+      .finally( resetDump ); // allow another backup request
   }
 
   return Promise.resolve();
@@ -139,11 +141,11 @@ const scheduleDump = async ( delay = 0, next = () => {} ) => {
 
 /**
  * backup
- * Wrapper for the scheduleDump with Sync as a callaback
+ * Wrapper for the scheduleDump, using syncService as callaback
  *
  * @param {number} delay set a ms delay
  */
- const backup = delay => scheduleDump( delay, () => syncService( { srcFs: SYNC_SRC, dstFs: SYNC_DST } ) );
+ const backup = delay => scheduleDump( delay, () => syncService( SYNC_CMD, { srcFs: SYNC_SRC, dstFs: SYNC_DST } ) );
 
 // Configure Changefeeds for the document table
 const docChangefeeds = async delay => {
@@ -161,14 +163,14 @@ const docChangefeeds = async delay => {
 };
 
 /**
- * registerChangefeedsListeners
+ * setupChangefeeds
  * Set up listeners for the specified Changefeeds
  */
-const registerChangefeedsListeners = async () => {
+const setupChangefeeds = async () => {
   await docChangefeeds( BACKUP_DELAY_MS );
 };
 
 export {
-  registerChangefeedsListeners,
+  setupChangefeeds,
   backup
 };
