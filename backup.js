@@ -6,6 +6,7 @@ import { exec as execRaw } from 'child_process';
 import addMilliseconds from 'date-fns/addMilliseconds';
 import formatDistance from 'date-fns/formatDistance';
 import fetch from 'node-fetch';
+import base64 from 'base-64';
 
 import logger from './logger';
 import {
@@ -14,10 +15,11 @@ import {
   DB_NAME,
   DUMP_DIRECTORY,
   DUMP_DATE_FORMAT,
-  DUMP_PATH,
-  DUMP_DELAY_HOURS,
+  BACKUP_DELAY_HOURS,
   SYNC_HOST,
-  SYNC_MODE,
+  SYNC_LOGIN,
+  SYNC_PASSWORD,
+  SYNC_CMD,
   SYNC_SRC,
   SYNC_DST,
   SYNC_PORT
@@ -25,16 +27,12 @@ import {
 import db from './db';
 
 const exec = util.promisify( execRaw );
+const setTimeoutPromise = util.promisify( setTimeout );
 
 const MS_PER_SECOND = 1000;
 const MINUTES_PER_HOUR = 60;
 const SECONDS_PER_MINUTE = 60;
-const DUMP_DELAY_MS = DUMP_DELAY_HOURS * MINUTES_PER_HOUR * SECONDS_PER_MINUTE * MS_PER_SECOND;
-
-// rclone
-const SYNC_DEFAULTS = {
-  _async: true
-};
+const BACKUP_DELAY_MS = BACKUP_DELAY_HOURS * MINUTES_PER_HOUR * SECONDS_PER_MINUTE * MS_PER_SECOND;
 
 const checkHTTPStatus = res => {
   const { statusText, status, ok } = res;
@@ -43,27 +41,32 @@ const checkHTTPStatus = res => {
   }
   return res;
 };
-/**
- * sync
- * Sync to a remote via rClone remote control. See {@link https://rclone.org/rc/}
- * @param {*} opts options to configure the command
- * @returns an object with rClone "jobid"
- */
-const sync = async opts => {
-  const body = _.defaults( opts, {
-    srcFs: SYNC_SRC,
-    dstFs: SYNC_DST
-  }, SYNC_DEFAULTS );
-  let url = `http://${SYNC_HOST}:${SYNC_PORT}/sync/${SYNC_MODE}`;
 
-  logger.info( `Attempting ${SYNC_MODE} from ${_.get( body, 'srcFs') } to ${_.get( body, 'dstFs') }` );
+// rclone
+const SYNC_DEFAULT_OPTS = {
+  _async: true
+};
+
+/**
+ * syncService
+ * Wrapper for the rClone remote control. See {@link https://rclone.org/rc/}
+ * If SYNC_HOST is unavailable or any other errors, simply swallows
+ *
+ * @param {*} opts options to configure the command
+ * @returns if _async = true, an object with rClone "jobid" else nothing
+ */
+const syncService = opts => {
+  const payload = _.defaults( opts,  SYNC_DEFAULT_OPTS );
+  const body = JSON.stringify( payload );
+  let url = `http://${SYNC_HOST}:${SYNC_PORT}/${SYNC_CMD}`;
 
   return fetch( url, {
     method: 'POST',
-    body: JSON.stringify( body ),
+    body,
     headers: {
       'Content-Type': 'application/json',
-      'Accept': 'application/json'
+      'Accept': 'application/json',
+      'Authorization': `Basic ${base64.encode(SYNC_LOGIN + ":" + SYNC_PASSWORD)}`
     }
   })
   .then( checkHTTPStatus )
@@ -73,7 +76,7 @@ const sync = async opts => {
     logger.info( JSON.stringify( json, null, 2 ) );
   })
   .catch( err => {
-    logger.error( `Problem with Sync: ${err}` ); // swallow
+    logger.error( `sync: ${err}` ); // swallow
   });
 };
 
@@ -84,68 +87,63 @@ let loadTable = name => db.accessTable( name );
  * dump
  * Dump the RethinkDB database
  * The result is a zipped archive named `${DB_NAME}_dump_${DATETIME}.tar.gz` in DUMP_DIRECTORY
- *
- * @return location the path to the dump file
  */
 const dump = async () => {
   const DATETIME = format(new Date(), DUMP_DATE_FORMAT);
   const FILENAME = `${DB_NAME}_dump_${DATETIME}.tar.gz`;
   const DUMP_FOLDER = path.join( __dirname, DUMP_DIRECTORY );
   const CMD = `cd ${DUMP_FOLDER} && rethinkdb dump --connect ${DB_HOST}:${DB_PORT} --export ${DB_NAME} --file ${FILENAME}`;
-  const location = `/${DUMP_PATH}${FILENAME}`;
 
   try {
     const { stdout } = await exec( CMD );
     logger.info( stdout );
-    logger.info( `Successful dump to: ${location}` );
-    return location;
+    return Promise.resolve();
 
   } catch ( err ) {
-    logger.error( `dump error: ${err}` ); // swallow
+    logger.error( `dump error: ${err}` );
+    throw err;
   }
 };
 
 let dumpScheduled = false;
 let dumpTime = null;
+let resetDump = () => { dumpScheduled = false; dumpTime = null; };
 
-const scheduleDump = async ( delay, next = () => {} ) => {
+/**
+ * scheduleDump
+ * schedule a dump in delay ms. Will ignore additional requests if already scheduled
+ *
+ * @param {number} delay ms delay for dumping (default 0)
+ * @param {object} next callback
+ */
+const scheduleDump = async ( delay = 0, next = () => {} ) => {
   let now = new Date();
   logger.info( `A dump request has been received` );
 
   if( dumpScheduled ){
     logger.info( `A dump has already been scheduled for ${dumpTime} (${formatDistance( now, dumpTime )})` );
-  } else {
 
+  } else {
     dumpTime = addMilliseconds( new Date(), delay );
     logger.info( `A dump was scheduled for ${dumpTime} (${formatDistance( now, dumpTime )})` );
     dumpScheduled = true;
 
-    setTimeout( async () => {
-      await dump();
-      await next();
-      dumpTime = null;
-      dumpScheduled = false;
-    }, delay );
+    setTimeoutPromise( delay )
+      .then( dump )
+      .then( next )
+      .finally( resetDump );
   }
+
+  return Promise.resolve();
 };
 
 /**
  * backup
- * dump the database and sync to remote
+ * Wrapper for the scheduleDump with Sync as a callaback
  *
- * @param {number} delay ms delay for dumping (default none)
- * @return url location of the dump, possibly null if scheduled
+ * @param {number} delay set a ms delay
  */
- const backup = async ( delay = 0 )=> {
-  let location = null;
-  if( delay == 0 ){
-    location = await dump();
-    await sync();
-  } else {
-    await scheduleDump( delay, sync );
-  }
-  return location;
-};
+ const backup = delay => scheduleDump( delay, () => syncService( { srcFs: SYNC_SRC, dstFs: SYNC_DST } ) );
 
 // Configure Changefeeds for the document table
 const docChangefeeds = async delay => {
@@ -167,7 +165,7 @@ const docChangefeeds = async delay => {
  * Set up listeners for the specified Changefeeds
  */
 const registerChangefeedsListeners = async () => {
-  await docChangefeeds( DUMP_DELAY_MS );
+  await docChangefeeds( BACKUP_DELAY_MS );
 };
 
 export {

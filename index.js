@@ -30,12 +30,7 @@ app.use(favicon(path.join(__dirname, 'logo.png')));
 app.use(`/${DUMP_PATH}`,  serveIndex( path.join( __dirname, DUMP_DIRECTORY ), { 'icons': true } ) );
 
 app.get(`/${DUMP_PATH}dump`, checkApiKey, ( req, res, next ) => {
-  backup()
-    .then( url => {
-      res.location( url );
-      return res.status( 201 ).end();
-    })
-    .catch( next );
+  backup().then( () => res.status( 202 ).end() ).catch( next );
 });
 
 app.get(`/${DUMP_PATH}:fileName`, ( req, res, next ) => {
