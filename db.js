@@ -18,13 +18,22 @@ import {
   DUMP_DELAY_HOURS
 } from './config';
 
+const exec = util.promisify( execRaw );
+
 const MS_PER_SECOND = 1000;
 const MINUTES_PER_HOUR = 60;
 const SECONDS_PER_MINUTE = 60;
 const DUMP_DELAY_MS = DUMP_DELAY_HOURS * MINUTES_PER_HOUR * SECONDS_PER_MINUTE * MS_PER_SECOND;
 
 // RethinkDB: dump
-const exec = util.promisify( execRaw );
+
+/**
+ * dump
+ * Dump the RethinkDB database
+ * The result is a zipped archive named `${DB_NAME}_dump_${DATETIME}.tar.gz` in DUMP_FOLDER
+ *
+ * @return location the path to the dump file
+ */
 const dump = async () => {
   const DATETIME = format(new Date(), DUMP_DATE_FORMAT);
   const FILENAME = `${DB_NAME}_dump_${DATETIME}.tar.gz`;
@@ -72,6 +81,8 @@ const requestDump = async ( delay = 0 ) => {
 // RethinkDB: changefeed
 /**
  * addChangesFeed
+ * Add a listener for changes to a RethinkDB table.
+ * Items are filtered via 'predicate' and items can be handled individually via the 'handleItem( err, item)'
  *
  * @param {string} table Name of the database table
  * @param {object} predicate RethinkDB predicate_function
@@ -93,7 +104,9 @@ const toPublicStatus = r.row( 'new_val' )( 'status' ).eq( 'public' ).and( r.row(
 const addedItem = r.row( 'type' ).eq( 'add' );
 const docFilter = addedItem.or( toPublicStatus );
 
-const initChangesFeeds = () => addChangesFeed( 'document', docFilter, () => requestDump( DUMP_DELAY_MS ) );
+const initChangesFeeds = async () => {
+  await addChangesFeed( 'document', docFilter, () => requestDump( DUMP_DELAY_MS ) ); //add, submit
+};
 
 export {
   initChangesFeeds,

@@ -32,3 +32,8 @@ export const DB_PORT = env( 'DB_PORT', 28015 );
 export const DB_NAME = env( 'DB_NAME', 'factoid' );
 export const DUMP_DATE_FORMAT = env( 'DUMP_DATE_FORMAT', 'yyyy-MM-dd_HH-mm-ss-SSS' );
 export const DUMP_DELAY_HOURS = env( 'DUMP_DELAY_HOURS', 0.05 );
+
+// Sync
+export const SYNC_HOST = env( 'SYNC_HOST', 'localhost' );
+export const SYNC_PORT = env( 'SYNC_HOST', 5572 );
+
