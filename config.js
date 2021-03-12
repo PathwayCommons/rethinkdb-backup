@@ -45,5 +45,5 @@ export const SYNC_LOGIN = env( 'SYNC_LOGIN', undefined );
 export const SYNC_PASSWORD = env( 'SYNC_PASSWORD', undefined );
 export const SYNC_CMD = env( 'SYNC_CMD', 'sync/copy' );
 export const SYNC_SRC = env( 'SYNC_SRC', '/data' );
-export const SYNC_DST = env( 'SYNC_DST', 'dropbox:archives' );
+export const SYNC_DST = env( 'SYNC_DST', 'remote:archives' );
 
