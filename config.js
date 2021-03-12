@@ -36,7 +36,7 @@ export const DB_CERT = env( 'DB_CERT', undefined );  // path to a certificate (c
 
 // Backup
 export const DUMP_DATE_FORMAT = env( 'DUMP_DATE_FORMAT', 'yyyy-MM-dd_HH-mm-ss-SSS' );
-export const BACKUP_DELAY_HOURS = env( 'BACKUP_DELAY_HOURS', 3 );
+export const BACKUP_DELAY_MIN = env( 'BACKUP_DELAY_MIN', 180 );
 
 // Sync Service
 export const SYNC_HOST = env( 'SYNC_HOST', 'localhost' );

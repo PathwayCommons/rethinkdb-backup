@@ -73,7 +73,7 @@ Database:
 Backup:
 
 - `DUMP_DATE_FORMAT` : format for the date stamp used in naming the zipped archive - i.e. `${DB_NAME}_dump_<date stamp>.tar.gz` (default `yyyy-MM-dd_HH-mm-ss-SSS`)
-- `BACKUP_DELAY_HOURS` : the hours to wait before triggering a backup (default `3`)
+- `BACKUP_DELAY_MIN` : the time to wait before triggering a backup (default `180`)
 
 Sync Service:
 

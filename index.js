@@ -47,7 +47,7 @@ app.get(`/${DUMP_PATH}:fileName`, ( req, res, next ) => {
     if ( err ) {
       next( err );
     } else {
-      logger.info('Sent:', fileName);
+      logger.info(`Sent ${fileName}`);
     }
   });
 });

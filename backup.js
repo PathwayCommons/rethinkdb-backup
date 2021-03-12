@@ -15,7 +15,7 @@ import {
   DB_NAME,
   DUMP_DIRECTORY,
   DUMP_DATE_FORMAT,
-  BACKUP_DELAY_HOURS,
+  BACKUP_DELAY_MIN,
   SYNC_HOST,
   SYNC_LOGIN,
   SYNC_PASSWORD,
@@ -30,9 +30,8 @@ const exec = util.promisify( execRaw );
 const setTimeoutPromise = util.promisify( setTimeout );
 
 const MS_PER_SECOND = 1000;
-const MINUTES_PER_HOUR = 60;
 const SECONDS_PER_MINUTE = 60;
-const BACKUP_DELAY_MS = BACKUP_DELAY_HOURS * MINUTES_PER_HOUR * SECONDS_PER_MINUTE * MS_PER_SECOND;
+const BACKUP_DELAY_MS = BACKUP_DELAY_MIN * SECONDS_PER_MINUTE * MS_PER_SECOND;
 
 const checkHTTPStatus = res => {
   const { statusText, status, ok } = res;
@@ -152,14 +151,24 @@ const docChangefeeds = async delay => {
   const docOpts = { includeTypes: true };
   const { rethink: r, conn, table } = await loadTable( 'document' );
 
-  // Status changed to 'submitted'
-  const toPublicStatus = r.row( 'new_val' )( 'status' ).eq( 'public' ).and( r.row( 'old_val' )( 'status' ).ne( 'public' ) );
   // Document 'add'
   const addedItem = r.row( 'type' ).eq( 'add' );
-  const docFilter = addedItem.or( toPublicStatus );
+
+  // Status changed to 'public' from other
+  const toPublicStatus = r.row( 'new_val' )( 'status' ).eq( 'public' ).and( r.row( 'old_val' )( 'status' ).ne( 'public' ) );
+
+  // Status is 'public' and updated
+  const publicUpdated = r.row( 'new_val' )( 'status' ).eq( 'public' )
+    .and( r.row( 'old_val' )( 'status' ).eq( 'public' ) );
+
+  const docFilter = addedItem.or( toPublicStatus ).or( publicUpdated );
 
   const cursor = await table.changes( docOpts ).filter( docFilter ).run( conn );
   cursor.each( () => backup( delay ) );
+  // cursor.each( (err, item) => {
+  //   const type = _.get( item, 'type' );
+  //   console.log( type );
+  // });
 };
 
 /**
