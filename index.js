@@ -3,6 +3,7 @@ import express from 'express';
 import path from 'path';
 import serveIndex from 'serve-index';
 import favicon from 'serve-favicon';
+import process from 'process';
 
 import logger from './logger';
 import {
@@ -13,6 +14,7 @@ import {
   API_KEY
 } from './config';
 import { backup, setupChangefeeds } from  './backup';
+import db from './db';
 
 // ExpressJS: routes
 const app = express();
@@ -55,11 +57,16 @@ app.get(`/${DUMP_PATH}:fileName`, ( req, res, next ) => {
 
 // Initialize app
 Promise.resolve()
+  .then( () => db.tryForTable( 'document' ) )
   .then( setupChangefeeds )
   .then( () => {
     app.listen( PORT, () => {
       logger.info(`Listening at ${BASE_URL}:${PORT}`);
     });
+  })
+  .catch( err => {
+    logger.error(`Init: ${err}`);
+    process.exit( 1 );
   });
 
 export default app;
