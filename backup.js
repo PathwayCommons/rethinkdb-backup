@@ -151,6 +151,9 @@ const docChangefeeds = async delay => {
   const docOpts = { includeTypes: true };
   const { rethink: r, conn, table } = await loadTable( 'document' );
 
+  // Document not 'demo'
+  const notDemo = r.row( 'new_val' )( 'id' ).ne( 'demo' );
+
   // Document 'add'
   const addedItem = r.row( 'type' ).eq( 'add' );
 
@@ -161,7 +164,7 @@ const docChangefeeds = async delay => {
   const publicUpdated = r.row( 'new_val' )( 'status' ).eq( 'public' )
     .and( r.row( 'old_val' )( 'status' ).eq( 'public' ) );
 
-  const docFilter = addedItem.or( toPublicStatus ).or( publicUpdated );
+  const docFilter = notDemo.and( addedItem.or( toPublicStatus ).or( publicUpdated ) );
 
   const cursor = await table.changes( docOpts ).filter( docFilter ).run( conn );
   cursor.each( () => backup( delay ) );
