@@ -1,6 +1,7 @@
 import r from 'rethinkdb';
 import fs from 'fs';
 import * as config from './config';
+import logger from './logger';
 
 let db = {
   connect: function(){
@@ -85,6 +86,23 @@ let db = {
         table: table
       };
     } );
+  },
+
+  tryForTable: function( tableName, maxTries = 6 ){
+    const BASE = 8;
+    const delay = retryCount => new Promise( resolve => setTimeout( resolve, 1000 + BASE ** retryCount ) );
+    const tryTable = ( name, retryCount = 0 ) => this.accessTable( name )
+      .catch( () => {
+        if( retryCount > maxTries ){
+          return;
+        } else {
+          logger.warn( `Attempt ${ retryCount} at accessing table '${name}' failed` );
+          logger.warn( `Next try in ${( 1000 + BASE ** retryCount)/1000} seconds` );
+          return delay( retryCount ).then( () => tryTable( name, retryCount + 1 ) );
+        }
+      });
+
+    return tryTable( tableName );
   }
 };
 
