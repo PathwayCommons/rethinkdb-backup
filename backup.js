@@ -22,7 +22,8 @@ import {
   SYNC_CMD,
   SYNC_SRC,
   SYNC_DST,
-  SYNC_PORT
+  SYNC_PORT,
+  SYNC_ENABLED
 } from './config';
 import db from './db';
 
@@ -138,13 +139,17 @@ const scheduleDump = async ( delay = 0, next = () => {} ) => {
   return Promise.resolve();
 };
 
+const dumpNext = SYNC_ENABLED ?
+  () => syncService( SYNC_CMD, { srcFs: SYNC_SRC, dstFs: SYNC_DST } ) :
+  () => { logger.info(`SYNC_ENABLED: ${SYNC_ENABLED}`); };
+
 /**
  * backup
  * Wrapper for the scheduleDump, using syncService as callaback
  *
  * @param {number} delay set a ms delay
  */
- const backup = delay => scheduleDump( delay, () => syncService( SYNC_CMD, { srcFs: SYNC_SRC, dstFs: SYNC_DST } ) );
+const backup = delay => scheduleDump( delay, dumpNext );
 
 // Configure Changefeeds for the document table
 const docChangefeeds = async delay => {
