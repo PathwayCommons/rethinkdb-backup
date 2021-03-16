@@ -77,6 +77,7 @@ Backup:
 
 Sync Service:
 
+- `SYNC_ENABLED` : Use the Sync service (default `true`)
 - `SYNC_HOST` : Sync service host name (default `localhost`)
 - `SYNC_PORT` : Port that the sync service is bound to (default `5572`)
 - `SYNC_LOGIN` : User name for authentication.

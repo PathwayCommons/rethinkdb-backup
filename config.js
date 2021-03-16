@@ -39,6 +39,7 @@ export const DUMP_DATE_FORMAT = env( 'DUMP_DATE_FORMAT', 'yyyy-MM-dd_HH-mm-ss-SS
 export const BACKUP_DELAY_MIN = env( 'BACKUP_DELAY_MIN', 180 );
 
 // Sync Service
+export const SYNC_ENABLED = env( 'SYNC_ENABLED', true );
 export const SYNC_HOST = env( 'SYNC_HOST', 'localhost' );
 export const SYNC_PORT = env( 'SYNC_PORT', 5572 );
 export const SYNC_LOGIN = env( 'SYNC_LOGIN', undefined );
