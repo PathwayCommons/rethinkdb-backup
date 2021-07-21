@@ -157,7 +157,7 @@ const docChangefeeds = async delay => {
   const { rethink: r, conn, table } = await loadTable( 'document' );
 
   // Document not 'demo'
-  const notDemo = r.row( 'new_val' )( 'id' ).ne( 'demo' );
+  const notDemo = r.row( 'new_val' )( 'id' ).ne( 'demo' ).and( r.row( 'new_val' )( 'secret' ).ne( 'demo' ) );
 
   // Document 'add'
   const addedItem = r.row( 'type' ).eq( 'add' );
