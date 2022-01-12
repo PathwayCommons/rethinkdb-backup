@@ -1,4 +1,4 @@
-FROM node:14.16
+FROM node:17-stretch
 
 ############## General ##############
 ARG VERSION_CODENAME=stretch
@@ -46,4 +46,4 @@ RUN chown appuser:appuser -R /home/appuser
 
 USER appuser
 
-CMD ["npm", "run", "start"]
+CMD ./run.sh
