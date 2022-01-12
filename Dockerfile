@@ -1,4 +1,4 @@
-FROM node:14.16
+FROM node:17-stretch
 
 ############## General ##############
 ARG VERSION_CODENAME=stretch
